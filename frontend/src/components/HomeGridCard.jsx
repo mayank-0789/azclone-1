@@ -37,12 +37,9 @@ const HomeGridCard = ({ title, linkText = "See more", linkUrl = "/", image, item
                 )}
             </div>
 
-            <Link
-                to={linkUrl}
-                className="block text-[13px] text-[#007185] hover:text-[#c7511f] hover:underline font-medium"
-            >
+            <span className="block text-[13px] text-gray-400 cursor-not-allowed font-medium">
                 {linkText}
-            </Link>
+            </span>
         </div>
     );
 };

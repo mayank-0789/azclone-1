@@ -12,7 +12,7 @@ function OrdersPage() {
   const [data, setData] = useState({ searchCategories: [], footerLinks: {} });
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('orders');
-  const { isAuthenticated } = useAuth(); // Removed 'user' as it's not used directly in render
+  const { isAuthenticated, user } = useAuth();
 
   useEffect(() => {
     axios.all([
@@ -26,36 +26,36 @@ function OrdersPage() {
 
   const orders = [
     {
-      id: '1',
+      id: '3',
       orderId: '404-5926811-1234567',
       title: 'Apple AirPods Pro (2nd Generation)',
       price: 18999.00,
       status: 'Delivered 8-Jul',
       date: '8 July 2024',
-      img: 'https://images.unsplash.com/photo-1600294037681-c80b4cb5b434?w=100',
-      recipient: 'Mayank',
+      img: '/pods.jpg',
+      recipient: user?.firstName || 'Demo',
       returnWindow: 'Return window closed on 18-Jul-2024'
     },
     {
-      id: '2',
+      id: '6',
       orderId: '404-1234567-8901234',
-      title: 'Sony WH-1000XM5 Wireless Noise Cancelling Headphones',
-      price: 26990.00,
+      title: 'Logitech Brio 100 Full HD 1080P Webcam for Meetings and Streaming, Auto-Light Balance',
+      price: 3095.00,
       status: 'Delivered 12-Jul',
       date: '10 July 2024',
-      img: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=100',
-      recipient: 'Mayank',
+      img: '/zebronic.jpg',
+      recipient: user?.firstName || 'Demo',
       returnWindow: 'Return window closed on 22-Jul-2024'
     },
     {
-      id: '3',
+      id: '5',
       orderId: '404-7654321-5678901',
-      title: 'Apple Watch Series 9 GPS 41mm',
-      price: 41900.00,
+      title: 'ZEBRONICS Fame, 2.0 USB Computer Speakers, 5 Watts, USB Powered, AUX, Volume Control',
+      price: 449.00,
       status: 'Arriving tomorrow by 9 PM',
       date: 'Today',
-      img: 'https://images.unsplash.com/photo-1546868871-7041f2a55e12?w=100',
-      recipient: 'Mayank',
+      img: '/speaker.jpg',
+      recipient: user?.firstName || 'Demo',
       returnWindow: 'Return eligible through 15-Aug-2024'
     }
   ];
@@ -154,9 +154,9 @@ function OrdersPage() {
                   <div className="text-right">
                     <div className="uppercase">Order # {o.orderId}</div>
                     <div className="flex gap-4 justify-end text-[#007185]">
-                      <span className="hover:text-[#c7511f] hover:underline cursor-pointer">View order details</span>
+                      <span className="text-[#565959]">View order details</span>
                       <span className="text-[#D5D9D9]">|</span>
-                      <span className="hover:text-[#c7511f] hover:underline cursor-pointer">Invoice</span>
+                      <span className="text-[#565959]">Invoice</span>
                     </div>
                   </div>
                 </div>
@@ -174,11 +174,7 @@ function OrdersPage() {
                         <Link to={`/product/${o.id}`} className="text-[#007185] hover:text-[#c7511f] hover:underline font-medium text-[14px] line-clamp-2 mb-1">
                           {o.title}
                         </Link>
-                        <div className="text-[12px] text-[#565959] mb-3">{o.returnWindow}</div>
-                        <button className="flex items-center gap-1 bg-[#FFD814] border border-[#FCD200] hover:bg-[#F7CA00] rounded-full px-4 py-1.5 shadow-sm text-[13px]">
-                          <img src="https://m.media-amazon.com/images/G/31/b2b/buyagain/buy-again-icon-2._CB497678120_.png" className="w-4 h-4" alt="" />
-                          Buy it again
-                        </button>
+                        <div className="text-[12px] text-[#565959]">{o.returnWindow}</div>
                       </div>
                     </div>
                   </div>

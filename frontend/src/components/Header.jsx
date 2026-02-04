@@ -298,18 +298,18 @@ const Header = ({ searchCategories = [] }) => {
         <Link to="/deals" className="px-2 py-1 border border-transparent hover:border-white rounded-sm whitespace-nowrap">
           Today's Deals
         </Link>
-        <Link to="/customer-service" className="px-2 py-1 border border-transparent hover:border-white rounded-sm whitespace-nowrap">
+        <span className="px-2 py-1 border border-transparent rounded-sm whitespace-nowrap text-gray-400 cursor-not-allowed">
           Customer Service
-        </Link>
-        <Link to="/registry" className="px-2 py-1 border border-transparent hover:border-white rounded-sm whitespace-nowrap">
+        </span>
+        <span className="px-2 py-1 border border-transparent rounded-sm whitespace-nowrap text-gray-400 cursor-not-allowed">
           Registry
-        </Link>
-        <Link to="/gift-cards" className="px-2 py-1 border border-transparent hover:border-white rounded-sm whitespace-nowrap">
+        </span>
+        <span className="px-2 py-1 border border-transparent rounded-sm whitespace-nowrap text-gray-400 cursor-not-allowed">
           Gift Cards
-        </Link>
-        <Link to="/sell" className="px-2 py-1 border border-transparent hover:border-white rounded-sm whitespace-nowrap">
+        </span>
+        <span className="px-2 py-1 border border-transparent rounded-sm whitespace-nowrap text-gray-400 cursor-not-allowed">
           Sell
-        </Link>
+        </span>
         <span className="ml-auto px-2 py-1 text-[#febd69] font-bold whitespace-nowrap hidden md:block">
           Shop deals in Electronics
         </span>
