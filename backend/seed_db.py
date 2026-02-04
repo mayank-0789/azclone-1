@@ -230,6 +230,114 @@ HERO_SLIDES = [
     {"id": 4, "image": "/dumbell.jpg", "title": "Fitness & Gym Essentials", "link": "/category/sports", "backgroundColor": "#e3e6e6"}
 ]
 
+# Grid Cards data (moved from frontend HomePage.jsx)
+GRID_CARDS = [
+    {
+        "id": 1,
+        "title": "Continue shopping deals",
+        "link_text": "See more deals",
+        "link_url": "/deals",
+        "display_order": 1,
+        "items": [
+            {"image": "/zebronic.jpg"},
+            {"image": "/lap.jpg"},
+            {"image": "/never.jpg"},
+            {"image": "/usbc.jpg"}
+        ]
+    },
+    {
+        "id": 2,
+        "title": "Bulk order discounts + Up to 18% GST savings",
+        "link_text": "Create a free account",
+        "link_url": "/business",
+        "display_order": 2,
+        "items": [
+            {"label": "Up to 45% off | Laptops", "image": "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=300&h=300&fit=crop"},
+            {"label": "Up to 60% off | Kitchen", "image": "/appliance.jpg"},
+            {"label": "Min. 50% off | Office", "image": "https://images.unsplash.com/photo-1524758631624-e2822e304c36?w=300&h=300&fit=crop"},
+            {"label": "Up to 60% off | Business", "image": "https://images.unsplash.com/photo-1497215728101-856f4ea42174?w=300&h=300&fit=crop"}
+        ]
+    },
+    {
+        "id": 3,
+        "title": "Revamp your home in style",
+        "link_text": "Explore all",
+        "link_url": "/home",
+        "display_order": 3,
+        "items": [
+            {"label": "Cushion covers, bedsheets", "image": "/cushion.jpg"},
+            {"label": "Figurines, vases & more", "image": "https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=300&h=300&fit=crop"},
+            {"label": "Home storage", "image": "/homestorage.jpg"},
+            {"label": "Lighting solutions", "image": "/lighting.jpg"}
+        ]
+    },
+    {
+        "id": 4,
+        "title": "Appliances for your home | Up to 55% off",
+        "link_text": "See more",
+        "link_url": "/appliances",
+        "display_order": 4,
+        "items": [
+            {"label": "Air conditioners", "image": "/airconditioner.jpg"},
+            {"label": "Refrigerators", "image": "/refrigeration.jpg"},
+            {"label": "Microwaves", "image": "https://images.unsplash.com/photo-1574269909862-7e1d70bb8078?w=300&h=300&fit=crop"},
+            {"label": "Washing machines", "image": "https://images.unsplash.com/photo-1626806787461-102c1bfaaea1?w=300&h=300&fit=crop"}
+        ]
+    },
+    {
+        "id": 5,
+        "title": "Starting ₹49 | Deals on home essentials",
+        "link_text": "Explore all",
+        "link_url": "/home-essentials",
+        "display_order": 5,
+        "items": [
+            {"label": "Cleaning supplies", "image": "/cleaning.jpg"},
+            {"label": "Bathroom accessories", "image": "/bathroom.jpg"},
+            {"label": "Home tools", "image": "https://images.unsplash.com/photo-1572981779307-38b8cabb2407?w=300&h=300&fit=crop"},
+            {"label": "Wallpapers", "image": "/wallpaperhome.jpg"}
+        ]
+    },
+    {
+        "id": 6,
+        "title": "Starting ₹149 | Headphones",
+        "link_text": "See all offers",
+        "link_url": "/headphones",
+        "display_order": 6,
+        "items": [
+            {"label": "Starting ₹249 | boAt", "image": "https://images.unsplash.com/photo-1546435770-a3e426bf472b?w=300&h=300&fit=crop"},
+            {"label": "Starting ₹349 | boult", "image": "https://images.unsplash.com/photo-1613040809024-b4ef7ba99bc3?w=300&h=300&fit=crop"},
+            {"label": "Starting ₹649 | Noise", "image": "https://images.unsplash.com/photo-1590658268037-6bf12165a8df?w=300&h=300&fit=crop"},
+            {"label": "Starting ₹149 | Zebronics", "image": "https://images.unsplash.com/photo-1618366712010-f4ae9c647dcb?w=300&h=300&fit=crop"}
+        ]
+    },
+    {
+        "id": 7,
+        "title": "Starting ₹199 | Amazon Brands & more",
+        "link_text": "See more",
+        "link_url": "/amazon-brands",
+        "display_order": 7,
+        "items": [
+            {"label": "Starting ₹199 | Bedsheets", "image": "/bedsheet.jpg"},
+            {"label": "Starting ₹199 | Curtains", "image": "/curtain.jpg"},
+            {"label": "Min 40% off | Ironing", "image": "/ironing.jpg"},
+            {"label": "Up to 60% off | Decor", "image": "/deer.jpg"}
+        ]
+    },
+    {
+        "id": 8,
+        "title": "Automotive essentials | Up to 60% off",
+        "link_text": "See more",
+        "link_url": "/automotive",
+        "display_order": 8,
+        "items": [
+            {"label": "Cleaning accessories", "image": "https://images.unsplash.com/photo-1552930294-6b595f4c2974?w=300&h=300&fit=crop"},
+            {"label": "Tyre & rim care", "image": "/tyrerim.jpg"},
+            {"label": "Helmets", "image": "https://images.unsplash.com/photo-1589254065878-42c9da997008?w=300&h=300&fit=crop"},
+            {"label": "Vacuum cleaner", "image": "https://images.unsplash.com/photo-1558318374-067fb5f30001?w=300&h=300&fit=crop"}
+        ]
+    }
+]
+
 def seed():
     init_db()
     conn = get_db_connection()
@@ -267,6 +375,16 @@ def seed():
             "INSERT INTO hero_slides (id, image, title, link, backgroundColor) VALUES (?, ?, ?, ?, ?)",
             (slide['id'], slide['image'], slide['title'], slide['link'], slide['backgroundColor'])
         )
+        
+    # Seed grid cards
+    cursor.execute("DELETE FROM grid_cards")
+    for card in GRID_CARDS:
+        cursor.execute(
+            """INSERT INTO grid_cards (id, title, link_text, link_url, display_order, items) 
+               VALUES (?, ?, ?, ?, ?, ?)""",
+            (card['id'], card['title'], card['link_text'], card['link_url'], card['display_order'], 
+             json.dumps(card['items']))
+        )
     
     # Seed demo user
     import hashlib
@@ -289,51 +407,42 @@ def seed():
     # Seed mock orders
     from datetime import datetime, timedelta
     
+    # Matching the data exactly as it was on the frontend OrdersPage.jsx
     orders = [
         {
             'id': 'order-001',
-            'order_number': 'ORD-2024-001',
+            'order_number': '404-5926811-1234567',
             'user_id': 'user-demo-001',
-            'status': 'delivered',
-            'created_at': (datetime.now() - timedelta(days=30)).isoformat(),
-            'delivered_at': (datetime.now() - timedelta(days=25)).isoformat(),
+            'status': 'Delivered 8-Jul',
+            'created_at': '2024-07-08T10:00:00',
+            'delivered_at': '2024-07-08T18:00:00',
+            'return_window': 'Return window closed on 18-Jul-2024',
             'items': [
-                {'product_id': 1, 'quantity': 1},  # iPhone 17 Pro
+                {'product_id': 3, 'quantity': 1},  # AirPods
             ]
         },
         {
             'id': 'order-002',
-            'order_number': 'ORD-2024-002',
+            'order_number': '404-1234567-8901234',
             'user_id': 'user-demo-001',
-            'status': 'delivered',
-            'created_at': (datetime.now() - timedelta(days=60)).isoformat(),
-            'delivered_at': (datetime.now() - timedelta(days=55)).isoformat(),
+            'status': 'Delivered 12-Jul',
+            'created_at': '2024-07-10T11:00:00',
+            'delivered_at': '2024-07-12T14:00:00',
+            'return_window': 'Return window closed on 22-Jul-2024',
             'items': [
-                {'product_id': 3, 'quantity': 1},  # AirPods
-                {'product_id': 2, 'quantity': 1},  # Charger
+                {'product_id': 6, 'quantity': 1},  # Webcam
             ]
         },
         {
             'id': 'order-003',
-            'order_number': 'ORD-2024-003',
+            'order_number': '404-7654321-5678901',
             'user_id': 'user-demo-001',
-            'status': 'shipped',
-            'created_at': (datetime.now() - timedelta(days=5)).isoformat(),
+            'status': 'Arriving tomorrow by 9 PM',
+            'created_at': '2026-02-04T09:00:00',
             'delivered_at': None,
+            'return_window': 'Return eligible through 15-Aug-2024',
             'items': [
-                {'product_id': 5, 'quantity': 2},  # Speakers
-                {'product_id': 4, 'quantity': 1},  # USB Cable
-            ]
-        },
-        {
-            'id': 'order-004',
-            'order_number': 'ORD-2024-004',
-            'user_id': 'user-demo-001',
-            'status': 'processing',
-            'created_at': (datetime.now() - timedelta(days=1)).isoformat(),
-            'delivered_at': None,
-            'items': [
-                {'product_id': 6, 'quantity': 1},  # Webcam
+                {'product_id': 5, 'quantity': 1},  # Speakers
             ]
         }
     ]
@@ -384,11 +493,12 @@ def seed():
         cursor.execute(
             """INSERT INTO orders 
                (id, order_number, user_id, status, subtotal, tax, shipping_fee, discount, total, 
-                shipping_address, created_at, delivered_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                shipping_address, return_window, created_at, delivered_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (order_data['id'], order_data['order_number'], order_data['user_id'], 
              order_data['status'], subtotal, tax, shipping_fee, 0.00, total,
-             json.dumps(shipping_address), order_data['created_at'], order_data['delivered_at'])
+             json.dumps(shipping_address), order_data.get('return_window'), 
+             order_data['created_at'], order_data['delivered_at'])
         )
         
         # Insert order items

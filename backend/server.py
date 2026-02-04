@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Body, Depends, APIRouter, Query
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -46,13 +46,58 @@ from contextlib import asynccontextmanager
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: nothing to do
+    # Startup: Initialize and seed DB if needed
+    try:
+        from database import init_db
+        from seed_db import seed
+        
+        # Initialize tables
+        init_db()
+        
+        # Check if products exist, if not seed the DB
+        # This handles ephemeral filesystems (like Render) where DB might be fresh on restart
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT COUNT(*) FROM products")
+        count = cursor.fetchone()[0]
+        conn.close()
+        
+        if count == 0:
+            logger.info("Database empty, seeding initial data...")
+            seed()
+            logger.info("Database seeded successfully!")
+            
+    except Exception as e:
+        logger.error(f"Error during startup: {e}")
+        
     yield
     # Shutdown
     client.close()
 
 # Create the main app
 app = FastAPI(lifespan=lifespan)
+
+# Database Dependency
+def get_db():
+    conn = get_db_connection()
+    try:
+        yield conn
+    finally:
+        conn.close()
+
+# Setup MongoDB
+class MongoManager:
+    def __init__(self):
+        self.client = AsyncIOMotorClient(os.environ['MONGO_URL'])
+        self.db = self.client[os.environ['DB_NAME']]
+
+    def get_collection(self, name: str):
+        return self.db[name]
+
+    async def close(self):
+        self.client.close()
+
+mongo_manager = MongoManager()
 
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
@@ -111,6 +156,14 @@ class HeroSlide(BaseModel):
     title: str
     link: str
     backgroundColor: str
+
+class GridCard(BaseModel):
+    id: int
+    title: str
+    link_text: str
+    link_url: str
+    display_order: int
+    items: List[dict]
 
 class FooterLinks(BaseModel):
     getToKnowUs: List[dict]
@@ -313,9 +366,28 @@ async def get_deals_endpoint():
     return get_deals()
 
 @api_router.get("/hero-slides", response_model=List[HeroSlide])
-async def get_hero_slides():
+async def get_hero_slides(db=Depends(get_db)):
     """Get hero carousel slides"""
-    return await run_query("SELECT * FROM hero_slides", fetchall=True)
+    cursor = db.execute("SELECT * FROM hero_slides")
+    slides = []
+    for row in cursor.fetchall():
+        slides.append(dict(row))
+    return slides
+
+@api_router.get("/grid-cards", response_model=List[GridCard])
+async def get_grid_cards(db=Depends(get_db)):
+    """Get home page grid cards"""
+    cursor = db.execute("SELECT * FROM grid_cards ORDER BY display_order ASC")
+    cards = []
+    for row in cursor.fetchall():
+        card = dict(row)
+        # Parse items JSON
+        try:
+            card['items'] = json.loads(card['items'])
+        except:
+            card['items'] = []
+        cards.append(card)
+    return cards
 
 @api_router.get("/search-categories", response_model=List[str])
 async def get_search_categories():

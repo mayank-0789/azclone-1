@@ -6,7 +6,7 @@ from pathlib import Path
 DB_PATH = Path(__file__).parent / "amazon_clone.db"
 
 def get_db_connection():
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     return conn
 
@@ -82,6 +82,7 @@ def init_db():
         discount REAL DEFAULT 0.00,
         total REAL NOT NULL,
         shipping_address TEXT,
+        return_window TEXT,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
         delivered_at TEXT,
         FOREIGN KEY (user_id) REFERENCES users(id)
@@ -99,6 +100,42 @@ def init_db():
         unit_price REAL NOT NULL,
         total_price REAL NOT NULL,
         FOREIGN KEY (order_id) REFERENCES orders(id),
+        FOREIGN KEY (product_id) REFERENCES products(id)
+    )
+    ''')
+    
+    # Grid Cards table (for homepage promotional cards)
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS grid_cards (
+        id INTEGER PRIMARY KEY,
+        title TEXT NOT NULL,
+        link_text TEXT NOT NULL,
+        link_url TEXT DEFAULT '/',
+        display_order INTEGER DEFAULT 0,
+        items TEXT NOT NULL
+    )
+    ''')
+    
+    # Wishlist table
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS wishlist (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id TEXT NOT NULL,
+        product_id INTEGER NOT NULL,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id),
+        FOREIGN KEY (product_id) REFERENCES products(id)
+    )
+    ''')
+    
+    # Compare list table
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS compare_list (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id TEXT NOT NULL,
+        product_id INTEGER NOT NULL,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id),
         FOREIGN KEY (product_id) REFERENCES products(id)
     )
     ''')
