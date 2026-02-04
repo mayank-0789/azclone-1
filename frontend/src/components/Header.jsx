@@ -12,12 +12,14 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
+import SidebarMenu from './SidebarMenu';
 
 const Header = ({ searchCategories = [] }) => {
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
   const [showAccountDropdown, setShowAccountDropdown] = useState(false);
+  const [showSidebar, setShowSidebar] = useState(false);
   const dropdownRef = useRef(null);
   const accountRef = useRef(null);
   const navigate = useNavigate();
@@ -286,6 +288,7 @@ const Header = ({ searchCategories = [] }) => {
         data-testid="sub-nav"
       >
         <button
+          onClick={() => setShowSidebar(true)}
           className="flex items-center px-2 py-1 border border-transparent hover:border-white rounded-sm whitespace-nowrap font-bold"
           data-testid="all-menu-button"
         >
@@ -311,6 +314,9 @@ const Header = ({ searchCategories = [] }) => {
           Shop deals in Electronics
         </span>
       </nav>
+
+      {/* Sidebar Menu */}
+      <SidebarMenu isOpen={showSidebar} onClose={() => setShowSidebar(false)} />
     </header>
   );
 };

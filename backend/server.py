@@ -9,17 +9,50 @@ from pydantic import BaseModel, Field
 from typing import List, Optional, Dict
 import uuid
 from datetime import datetime, timedelta
+import json
+from database import get_db_connection
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
+
+# Helper for SQLite async interaction (running in threadpool)
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
+executor = ThreadPoolExecutor(max_workers=5)
+
+async def run_query(query, params=(), fetchone=False, fetchall=False):
+    loop = asyncio.get_event_loop()
+    def _run():
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(query, params)
+        if fetchone:
+            res = cursor.fetchone()
+            return dict(res) if res else None
+        if fetchall:
+            res = cursor.fetchall()
+            return [dict(row) for row in res]
+        conn.commit()
+        conn.close()
+    return await loop.run_in_executor(executor, _run)
+
 
 # MongoDB connection
 mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
 
+from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: nothing to do
+    yield
+    # Shutdown
+    client.close()
+
 # Create the main app
-app = FastAPI()
+app = FastAPI(lifespan=lifespan)
 
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
@@ -96,390 +129,57 @@ class CartItemCreate(BaseModel):
     quantity: int = 1
     session_id: str
 
-# ============ MOCK DATA ============
+class OrderItem(BaseModel):
+    id: str
+    order_id: str
+    product_id: int
+    product_snapshot: dict
+    quantity: int
+    unit_price: float
+    total_price: float
 
-CATEGORIES = [
-    {
-        "id": 1,
-        "name": "Electronics",
-        "image": "https://images.unsplash.com/photo-1498049794561-7780e7231661?w=300&h=300&fit=crop",
-        "link": "/category/electronics"
-    },
-    {
-        "id": 2,
-        "name": "Fashion",
-        "image": "https://images.unsplash.com/photo-1445205170230-053b83016050?w=300&h=300&fit=crop",
-        "link": "/category/fashion"
-    },
-    {
-        "id": 3,
-        "name": "Home & Kitchen",
-        "image": "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=300&h=300&fit=crop",
-        "link": "/category/home-kitchen"
-    },
-    {
-        "id": 4,
-        "name": "Books",
-        "image": "https://images.unsplash.com/photo-1512820790803-83ca734da794?w=300&h=300&fit=crop",
-        "link": "/category/books"
-    },
-    {
-        "id": 5,
-        "name": "Sports & Outdoors",
-        "image": "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=300&h=300&fit=crop",
-        "link": "/category/sports"
-    },
-    {
-        "id": 6,
-        "name": "Beauty & Personal Care",
-        "image": "https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=300&h=300&fit=crop",
-        "link": "/category/beauty"
-    },
-    {
-        "id": 7,
-        "name": "Toys & Games",
-        "image": "https://images.unsplash.com/photo-1558060370-d644479cb6f7?w=300&h=300&fit=crop",
-        "link": "/category/toys"
-    },
-    {
-        "id": 8,
-        "name": "Grocery",
-        "image": "https://images.unsplash.com/photo-1542838132-92c53300491e?w=300&h=300&fit=crop",
-        "link": "/category/grocery"
-    }
-]
+class Order(BaseModel):
+    id: str
+    order_number: str
+    user_id: str
+    status: str
+    subtotal: float
+    tax: float
+    shipping_fee: float
+    discount: float
+    total: float
+    shipping_address: Optional[dict] = None
+    created_at: str
+    delivered_at: Optional[str] = None
+    items: Optional[List[OrderItem]] = []
 
-PRODUCTS = [
-    {
-        "id": 1,
-        "title": "iPhone 17 Pro 256 GB: 15.93 cm (6.3\") Display with Promotion up to 120Hz, A19 Pro Chip",
-        "price": 134900.00,
-        "originalPrice": 134900.00,
-        "rating": 4.5,
-        "reviewCount": 55,
-        "image": "/phone.jpg",
-        "isPrime": True,
-        "category": "electronics",
-        "inStock": True,
-        "brand": "Apple",
-        "about": [
-            "UNIBODY DESIGN. FOR EXCEPTIONAL POWER — Heat-forged aluminium unibody enclosure for the most powerful iPhone ever made.",
-            "DURABLE CERAMIC SHIELD. FRONT AND BACK — Ceramic Shield protects the back of iPhone 17 Pro Max, making it 4x more resistant to cracks.",
-            "THE ULTIMATE PRO CAMERA SYSTEM — With all 48MP rear cameras and 8x optical-quality zoom — the longest zoom ever on an iPhone.",
-            "18MP CENTER STAGE FRONT CAMERA — Flexible ways to frame your shot. Smarter group selfies, Dual Capture video for simultaneous front and rear recording.",
-            "A19 PRO CHIP. VAPOUR COOLED. LIGHTNING FAST — A19 Pro is the most powerful iPhone chip yet, delivering up to 40% better sustained performance.",
-            "BREAKTHROUGH BATTERY LIFE — The unibody design creates massive additional battery capacity, for up to 31 hours of video playback."
-        ],
-        "specs": {
-            "Brand": "Apple",
-            "Operating System": "iOS",
-            "Memory Storage Capacity": "256 GB",
-            "Screen Size": "6.3 Inches",
-            "Resolution": "4K",
-            "Model Name": "iPhone 17 Pro"
-        },
-        "offers": [
-            {"type": "Bank Offer", "description": "Upto ₹4,000.00 discount on select Credit Cards", "link": "4 offers >"},
-            {"type": "Cashback", "description": "Upto ₹4,047.00 cashback as Amazon Pay Balance when you pay with Amazon Pay ICICI Bank Credit Card", "link": "1 offer >"},
-            {"type": "No Cost EMI", "description": "Upto ₹7,253.94 interest savings on select Credit Cards", "link": "1 offer >"},
-             {"type": "Partner Offer", "description": "Get GST invoice and save up to 28% on business purchases.", "link": "1 offer >"}
-        ]
-    },
-    {
-        "id": 2,
-        "title": "Apple 35W Dual USB-C Port Power Adapter",
-        "price": 5490.00,
-        "originalPrice": 5800.00,
-        "rating": 4.8,
-        "reviewCount": 151,
-        "image": "/charger.jpg",
-        "isPrime": True,
-        "category": "electronics",
-        "inStock": True,
-        "brand": "Apple",
-        "about": [
-            "DUAL PORT CHARGING — The 35W Dual USB-C Port Power Adapter allows you to charge two devices at the same time, whether you’re at home, in the office, or on the go.",
-            "COMPATIBILITY — Apple recommends using it with MacBook Air. You can also use it with iPhone, iPad, Apple Watch, and AirPods.",
-            "GLOBAL USE — Pair this power adapter with the World Travel Adapter Kit to charge in regions around the world.",
-            "CABLE SOLD SEPARATELY — Charging cable sold separately."
-        ],
-        "specs": {
-            "Brand": "Apple",
-            "Connectivity Technology": "USB",
-            "Connector Type": "USB Type C",
-            "Wattage": "35 Watts",
-            "Input Voltage": "240 Volts"
-        },
-        "offers": [
-             {"type": "Bank Offer", "description": "10% Instant Discount on SBI Credit Card", "link": "2 offers >"},
-             {"type": "Cashback", "description": "Flat ₹100 back on Amazon Pay Later", "link": "1 offer >"}
-        ]
-    },
-    {
-        "id": 3,
-        "title": "Apple AirPods 4 Wireless Earbuds, Bluetooth Headphones, Personalised Spatial...",
-        "price": 10999.00,
-        "originalPrice": 12900.00,
-        "rating": 3.8,
-        "reviewCount": 953,
-        "image": "/pods.jpg",
-        "isPrime": True,
-        "category": "electronics",
-        "inStock": True,
-        "brand": "Apple",
-        "about": [
-            "PERSONALISED SPATIAL AUDIO — With dynamic head tracking places sound all around you.",
-            "SINGLE FIT — Force sensor let you control your entertainment and answer or end calls.",
-            "SWEAT AND WATER RESISTANT — For AirPods and charging case.",
-            "CHARGING CASE — Lightning Charging Case or MagSafe Charging Case.",
-            "LISTENING TIME — Up to 6 hours of listening time."
-        ],
-        "specs": {
-            "Brand": "Apple",
-             "Model Name": "AirPods",
-            "Colour": "White",
-            "Form Factor": "In Ear",
-            "Connectivity": "Bluetooth 5.3"
-        },
-         "offers": [
-             {"type": "Cost EMI", "description": "No Cost EMI available", "link": "1 offer >"},
-             {"type": "Bank Offer", "description": "5% Instant Discount up to INR 250 on HSBC Cashback Card Credit Card Transactions. Minimum purchase value INR 1000", "link": "1 offer >"}
-        ]
-    },
-    {
-        "id": 4,
-        "title": "FEDUS USB Male to Female Extension Cable, 5 Meter/16.4Ft 2.0 USB A Male to A Female Cable",
-        "price": 569.00,
-        "originalPrice": 1499.00,
-        "rating": 4.4,
-        "reviewCount": 628,
-        "image": "/drive.jpg",
-        "isPrime": True,
-        "category": "electronics",
-        "inStock": True,
-        "brand": "FEDUS",
-        "about": [
-            "HIGH PERFORMANCE — This USB 2.0 extension cable extends the connection between a computer or Windows tablet and both USB 2.0 and USB 1.1 peripherals.",
-            "DURABILITY — Corrosion-resistant gold-plated connectors.",
-            "COMPATIBILITY — Keyboard, Mouse, Printer, Scanner, Camera, Flash Drive, Card Reader, Hard Drive.",
-            "LENGTH — 5 Meters / 16.4 Feet long cable."
-        ],
-        "specs": {
-            "Brand": "FEDUS",
-            "Connector Type": "USB Type A",
-            "Cable Type": "USB",
-            "Compatible Devices": "Scanner, PC, Printer",
-            "Colour": "Black"
-        },
-        "offers": []
-    },
-    {
-        "id": 5,
-        "title": "ZEBRONICS Fame, 2.0 USB Computer Speakers, 5 Watts, USB Powered, AUX, Volume Control",
-        "price": 449.00,
-        "originalPrice": 799.00,
-        "rating": 3.8,
-        "reviewCount": 12621,
-        "image": "/speaker.jpg",
-        "isPrime": True,
-        "category": "electronics",
-        "inStock": True,
-        "brand": "ZEBRONICS",
-        "about": [
-            "USB POWERED — Connect the USB side to either laptop or through adapter to any power source.",
-            "VOLUME CONTROL — Dedicated volume control knob.",
-            "AUX INPUT — Connects to laptop, desktop via 3.5mm jack.",
-             "COMPACT DESIGN — Easy to carry and place on desk."
-        ],
-        "specs": {
-            "Brand": "ZEBRONICS",
-            "Speaker Maximum Output Power": "5 Watts",
-             "Connectivity Technology": "Auxiliary, USB",
-            "Audio Output Mode": "Stereo",
-             "Mounting Type": "Tabletop"
-        },
-        "offers": []
+# Helper to parse JSON fields from SQLite
+def parse_product(p):
+    if not p: return None
+    p['about'] = json.loads(p['about']) if p.get('about') else []
+    p['specs'] = json.loads(p['specs']) if p.get('specs') else {}
+    p['offers'] = json.loads(p['offers']) if p.get('offers') else []
+    p['isPrime'] = bool(p['isPrime'])
+    p['inStock'] = bool(p['inStock'])
+    return p
 
-    },
-    {
-        "id": 6,
-        "title": "Logitech Brio 100 Full HD 1080P Webcam for Meetings and Streaming, Auto-Light Balance",
-        "price": 3095.00,
-        "originalPrice": 3995.00,
-        "rating": 4.4,
-        "reviewCount": 25393,
-        "image": "/zebronic.jpg",
-        "isPrime": True,
-        "category": "electronics",
-        "inStock": True,
-        "brand": "Logitech",
-        "about": [
-            "FULL HD 1080P WEBCAM — Look your best in video meetings with Brio 100.",
-             "AUTO-LIGHT BALANCE — RightLight 2 technology automatically adjusts up to 50% brightness.",
-             "PRIVACY SHUTTER — Integrated privacy shutter slides over the lens.",
-             "BUILT-IN MICROPHONE — Omni-directional mic ensures distinct audio."
-        ],
-         "specs": {
-            "Brand": "Logitech",
-            "Video Capture Resolution": "1080p",
-             "Connectivity Technology": "USB",
-             "Has Image Stabilization": "No",
-             "Image Capture Speed": "30 fps"
-        },
-        "offers": [
-              {"type": "Bank Offer", "description": "7.5% Instant Discount up to INR 1500 on Yes Bank Credit Card EMI Transactions. Minimum purchase value INR 10000", "link": "1 offer >"}
-        ]
-    },
-    {
-        "id": 7,
-        "title": "ZEBRONICS 180HB USB HUB, 3 Ports, USB 3.0, Transfer Speeds Upto 5 Gbps, Lightweight",
-        "price": 169.00,
-        "originalPrice": 449.00,
-        "rating": 3.8,
-        "reviewCount": 2174,
-        "image": "/drive.jpg",
-        "isPrime": True,
-        "category": "electronics",
-        "inStock": True,
-        "brand": "ZEBRONICS",
-        "about": [
-             "3 PORT USB HUB — Convert single USB port to 3 ports.",
-             "USB 3.0 — High speed transfer upto 5Gbps.",
-             "PLUG AND PLAY — No driver installation required.",
-             "COMPACT AND LIGHTWEIGHT — Design easy to carry."
-        ],
-        "specs": {
-            "Brand": "ZEBRONICS",
-             "Hardware Interface": "USB 3.0",
-             "Number of Ports": "3",
-             "Compatible Devices": "Laptops, Desktops",
-             "Data Transfer Rate": "5 Gbps"
-        },
-        "offers": []
-    }
-]
 
-def get_deals():
-    """Generate deals with dynamic end times"""
-    return [
-        {
-            "id": 1,
-            "title": "Deal of the Day",
-            "product": {
-                "id": 101,
-                "title": "Fire TV Stick 4K Max streaming device",
-                "price": 34.99,
-                "originalPrice": 59.99,
-                "discount": 42,
-                "image": "https://images.unsplash.com/photo-1593784991095-a205069470b6?w=400&h=400&fit=crop",
-                "rating": 4.6,
-                "reviewCount": 234567
-            },
-            "endsAt": (datetime.utcnow() + timedelta(hours=8)).isoformat()
-        },
-        {
-            "id": 2,
-            "title": "Lightning Deal",
-            "product": {
-                "id": 102,
-                "title": "Bose QuietComfort Ultra Earbuds",
-                "price": 229.00,
-                "originalPrice": 299.00,
-                "discount": 23,
-                "image": "https://images.unsplash.com/photo-1590658268037-6bf12165a8df?w=400&h=400&fit=crop",
-                "rating": 4.5,
-                "reviewCount": 12345
-            },
-            "endsAt": (datetime.utcnow() + timedelta(hours=3)).isoformat(),
-            "claimed": 67
-        },
-        {
-            "id": 3,
-            "title": "Lightning Deal",
-            "product": {
-                "id": 103,
-                "title": "iRobot Roomba i4 EVO Robot Vacuum",
-                "price": 249.99,
-                "originalPrice": 399.99,
-                "discount": 38,
-                "image": "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=400&fit=crop",
-                "rating": 4.4,
-                "reviewCount": 34567
-            },
-            "endsAt": (datetime.utcnow() + timedelta(hours=5)).isoformat(),
-            "claimed": 45
-        },
-        {
-            "id": 4,
-            "title": "Lightning Deal",
-            "product": {
-                "id": 104,
-                "title": "Philips Sonicare DiamondClean Smart 9500",
-                "price": 179.95,
-                "originalPrice": 329.99,
-                "discount": 45,
-                "image": "https://images.unsplash.com/photo-1559056199-641a0ac8b55e?w=400&h=400&fit=crop",
-                "rating": 4.6,
-                "reviewCount": 23456
-            },
-            "endsAt": (datetime.utcnow() + timedelta(hours=6)).isoformat(),
-            "claimed": 78
-        }
-    ]
+@api_router.get("/categories", response_model=List[Category])
+async def get_categories():
+    """Get all product categories"""
+    return await run_query("SELECT * FROM categories", fetchall=True)
 
-HERO_SLIDES = [
-    {
-        "id": 1,
-        "image": "/60percent.jpg",
-        "title": "Up to 60% off | Clearance Store",
-        "link": "/deals",
-        "backgroundColor": "#e3e6e6"
-    },
-    {
-        "id": 2,
-        "image": "/tshirt.jpg",
-        "title": "New Arrivals in Men's T-Shirts",
-        "link": "",
-        "backgroundColor": "#e3e6e6"
-    },
-    {
-        "id": 3,
-        "image": "/saree.jpg",
-        "title": "Ethnic Wear & Sarees",
-        "link": "",
-        "backgroundColor": "#e3e6e6"
-    },
-    {
-        "id": 4,
-        "image": "/dumbell.jpg",
-        "title": "Fitness & Gym Essentials",
-        "link": "/category/sports",
-        "backgroundColor": "#e3e6e6"
-    }
-]
+@api_router.get("/products", response_model=List[Product])
+async def get_products(category: Optional[str] = None):
+    """Get all products, optionally filtered by category"""
+    if category and category != "All":
+        rows = await run_query("SELECT * FROM products WHERE LOWER(category) = LOWER(?)", (category,), fetchall=True)
+    else:
+        rows = await run_query("SELECT * FROM products", fetchall=True)
+    return [parse_product(row) for row in rows]
 
-SEARCH_CATEGORIES = [
-    "All",
-    "Electronics",
-    "Computers",
-    "Smart Home",
-    "Arts & Crafts",
-    "Automotive",
-    "Baby",
-    "Beauty & Personal Care",
-    "Books",
-    "Fashion",
-    "Health & Household",
-    "Home & Kitchen",
-    "Industrial & Scientific",
-    "Kindle Store",
-    "Movies & TV",
-    "Music",
-    "Pet Supplies",
-    "Sports & Outdoors",
-    "Tools & Home Improvement",
-    "Toys & Games"
-]
+
+
 
 FOOTER_LINKS = {
     "getToKnowUs": [
@@ -521,17 +221,42 @@ FOOTER_LINKS = {
 async def root():
     return {"message": "Amazon Clone API"}
 
-@api_router.get("/categories", response_model=List[Category])
-async def get_categories():
-    """Get all product categories"""
-    return CATEGORIES
+@api_router.get("/hero-slides", response_model=List[HeroSlide])
+async def get_hero_slides():
+    """Get hero carousel slides"""
+    return await run_query("SELECT * FROM hero_slides", fetchall=True)
 
-@api_router.get("/products", response_model=List[Product])
-async def get_products(category: Optional[str] = None):
-    """Get all products, optionally filtered by category"""
-    if category and category != "All":
-        return [p for p in PRODUCTS if p["category"].lower() == category.lower()]
-    return PRODUCTS
+@api_router.get("/orders/{user_id}", response_model=List[Order])
+async def get_user_orders(user_id: str):
+    """Get all orders for a user with order items"""
+    # Get all orders for the user
+    orders = await run_query(
+        "SELECT * FROM orders WHERE user_id = ? ORDER BY created_at DESC",
+        (user_id,),
+        fetchall=True
+    )
+    
+    # For each order, fetch its items
+    for order in orders:
+        # Parse shipping address JSON
+        if order.get('shipping_address'):
+            order['shipping_address'] = json.loads(order['shipping_address'])
+        
+        # Fetch order items
+        order_items = await run_query(
+            "SELECT * FROM order_items WHERE order_id = ?",
+            (order['id'],),
+            fetchall=True
+        )
+        
+        # Parse product snapshots
+        for item in order_items:
+            if item.get('product_snapshot'):
+                item['product_snapshot'] = json.loads(item['product_snapshot'])
+        
+        order['items'] = order_items
+    
+    return orders
 
 @api_router.get("/products/search", response_model=List[Product])
 async def search_products(
@@ -539,44 +264,70 @@ async def search_products(
     category: Optional[str] = Query("All", description="Category filter")
 ):
     """Search products by query and category"""
-    results = PRODUCTS.copy()
+    query = "SELECT * FROM products WHERE 1=1"
+    params = []
     
     if category and category != "All":
         cat_lower = category.lower().replace(" ", "-").replace("&", "")
-        results = [p for p in results if cat_lower in p["category"].lower()]
+        query += " AND category LIKE ?"
+        params.append(f"%{cat_lower}%")
     
     if q:
-        query_lower = q.lower()
-        results = [
-            p for p in results 
-            if query_lower in p["title"].lower() or 
-               query_lower in p["category"].lower()
-        ]
+        query_lower = f"%{q.lower()}%"
+        query += " AND (LOWER(title) LIKE ? OR LOWER(category) LIKE ?)"
+        params.extend([query_lower, query_lower])
     
-    return results
+    rows = await run_query(query, tuple(params), fetchall=True)
+    return [parse_product(row) for row in rows]
 
 @api_router.get("/products/{product_id}", response_model=Product)
 async def get_product(product_id: int):
     """Get a single product by ID"""
-    product = next((p for p in PRODUCTS if p["id"] == product_id), None)
-    if not product:
+    row = await run_query("SELECT * FROM products WHERE id = ?", (product_id,), fetchone=True)
+    if not row:
         raise HTTPException(status_code=404, detail="Product not found")
-    return product
+    return parse_product(row)
 
 @api_router.get("/deals")
 async def get_deals_endpoint():
-    """Get current deals with live countdown timers"""
+    """Get current deals (Mocking the dynamic part for now)"""
+    # For now, we reuse the dynamic deal generator but we could also fetch basic deal info from DB
+    def get_deals():
+        return [
+            {
+                "id": 1,
+                "title": "Deal of the Day",
+                "product": {
+                    "id": 101,
+                    "title": "Fire TV Stick 4K Max streaming device",
+                    "price": 34.99,
+                    "originalPrice": 59.99,
+                    "discount": 42,
+                    "image": "https://images.unsplash.com/photo-1593784991095-a205069470b6?w=400&h=400&fit=crop",
+                    "rating": 4.6,
+                    "reviewCount": 234567
+                },
+                "endsAt": (datetime.utcnow() + timedelta(hours=8)).isoformat()
+            }
+        ]
     return get_deals()
 
 @api_router.get("/hero-slides", response_model=List[HeroSlide])
 async def get_hero_slides():
     """Get hero carousel slides"""
-    return HERO_SLIDES
+    return await run_query("SELECT * FROM hero_slides", fetchall=True)
 
 @api_router.get("/search-categories", response_model=List[str])
 async def get_search_categories():
     """Get all search categories"""
-    return SEARCH_CATEGORIES
+    # Define explicitly or could fetch from a distinct category list
+    return [
+        "All", "Electronics", "Computers", "Smart Home", "Arts & Crafts", 
+        "Automotive", "Baby", "Beauty & Personal Care", "Books", "Fashion",
+        "Health & Household", "Home & Kitchen", "Industrial & Scientific",
+        "Kindle Store", "Movies & TV", "Music", "Pet Supplies", 
+        "Sports & Outdoors", "Tools & Home Improvement", "Toys & Games"
+    ]
 
 @api_router.get("/footer-links", response_model=FooterLinks)
 async def get_footer_links():
@@ -896,9 +647,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.on_event("shutdown")
-async def shutdown_db_client():
-    client.close()
+
 
 if __name__ == "__main__":
     import uvicorn

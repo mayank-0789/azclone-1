@@ -147,7 +147,7 @@ const ProductPage = () => {
 
           {/* Left: Sticky Image Gallery (Col 5 - ~40%) */}
           <div className="lg:col-span-5">
-            <div className="sticky top-4 flex gap-4">
+            <div className="flex gap-4">
               <div className="hidden sm:flex flex-col gap-3 pt-1">
                 {[product.image, product.image, product.image, product.image].map((img, i) => (
                   <button
